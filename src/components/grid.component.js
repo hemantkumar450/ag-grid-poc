@@ -67,7 +67,10 @@ const GridComponent = () => {
       filter: true,
       editable: true,
       cellEditorSelector: cellEditorSelector,
-      type: 'Select'
+      type: 'Select',
+      suppressKeyboardEvent: (param) => {
+        return param.editing && param.event.key === "Enter";
+      },
     },
     {
       field: "price",

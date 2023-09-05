@@ -103,13 +103,10 @@ export default forwardRef((props, ref) => {
         <Space wrap>
             <Select
                 ref={refInput}
-                onKeyDown={onChangeHandler}
-                // defaultValue={defaultValue}
+                defaultValue={defaultValue}
                 style={{
                     width: 120,
                 }}
-                onInputKeyDown={test}
-                onSelect={onChangeHandler}
                 onChange={onChangeHandler}
                 options={options}
             />
