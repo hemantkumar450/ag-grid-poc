@@ -1,4 +1,4 @@
-import { Select, Space } from "antd";
+import { DatePicker, Space } from "antd";
 import React, {
   forwardRef,
   useCallback,
@@ -12,10 +12,8 @@ import React, {
 const KEY_BACKSPACE = "Backspace";
 
 export default forwardRef((props, ref) => {
-  const options = props.options || [];
   const defaultValue = props.defaultValue;
   const stopEditing = props.stopEditing;
-
   const createInitialState = () => {
     let startValue;
 
@@ -75,22 +73,18 @@ export default forwardRef((props, ref) => {
   });
 
   const onChangeHandler = useCallback((event) => {
-    setValue(event);
+    setValue(event.$d);
     setTimeout(() => {
       stopEditing();
     }, 100);
   });
 
   return (
-    <Space wrap>
-      <Select
-        ref={refInput}
+    <Space direction="vertical">
+      <DatePicker
         defaultValue={defaultValue}
-        style={{
-          width: 120,
-        }}
+        ref={refInput}
         onChange={onChangeHandler}
-        options={options}
       />
     </Space>
   );

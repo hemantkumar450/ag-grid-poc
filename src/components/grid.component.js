@@ -6,12 +6,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import Dropdown from '../UI/drop-down.js';
+import DatePicker from "../UI/date-picker";
+import Dropdown from "../UI/drop-down.js";
 import NumericCellEditor from "../UI/numeric-cell-editor.component.js";
 
 import "ag-grid-community/styles/ag-grid.css"; // Core grid CSS, always needed
 import "ag-grid-community/styles/ag-theme-alpine.css"; // Optional theme CSS
 
+const convertISOStringToMonthDay = (date = new Date()) => {
+  const tempDate = new Date(date).toString().split(" ");
+  const formattedDate = `${+tempDate[2]}/${tempDate[1]}/${+tempDate[3]}`;
+  return formattedDate;
+};
 
 const GridComponent = () => {
   const gridRef = useRef(); // Optional - for accessing Grid's API
@@ -19,38 +25,49 @@ const GridComponent = () => {
 
   const cellEditorSelector = (params) => {
     const { colDef, value } = params;
-    if (colDef.type === 'Number') {
+    if (colDef.type === "Number") {
       return {
         component: NumericCellEditor,
       };
     }
 
-    if (colDef.type === 'Select') {
+    if (colDef.type === "Select") {
       return {
         component: Dropdown,
         params: {
           defaultValue: value,
-          options: [{
-            value: 'jack',
-            label: 'Jack',
-          },
-          {
-            value: 'lucy',
-            label: 'Lucy',
-          },
-          {
-            value: 'Yiminghe',
-            label: 'yiminghe',
-          },
-          {
-            value: 'disabled',
-            label: 'Disabled',
-            disabled: true,
-          }]
-        }
+          options: [
+            {
+              value: "jack",
+              label: "Jack",
+            },
+            {
+              value: "lucy",
+              label: "Lucy",
+            },
+            {
+              value: "Yiminghe",
+              label: "yiminghe",
+            },
+            {
+              value: "disabled",
+              label: "Disabled",
+              disabled: true,
+            },
+          ],
+        },
       };
     }
 
+    if (colDef.type == "Date") {
+      return {
+        component: DatePicker,
+        params: {
+          defaultValue: null,
+          stopEditing,
+        },
+      };
+    }
     return undefined;
   };
 
@@ -60,17 +77,16 @@ const GridComponent = () => {
       field: "make",
       filter: true,
       editable: true,
-      //   width: "100%",
     },
     {
       field: "model",
       filter: true,
       editable: true,
-      cellEditorSelector: cellEditorSelector,
-      type: 'Select',
+      type: "Select",
       suppressKeyboardEvent: (param) => {
         return param.editing && param.event.key === "Enter";
       },
+      cellEditorSelector: cellEditorSelector,
     },
     {
       field: "price",
@@ -78,8 +94,24 @@ const GridComponent = () => {
         const value = param.value;
         return <label>$ {value}</label>;
       },
-      type: 'Number',
+      type: "Number",
       editable: true,
+      cellEditorSelector: cellEditorSelector,
+    },
+    {
+      field: "Date",
+      cellRenderer: (param) => {
+        const value = param.value?.toString();
+        return <label>$ {convertISOStringToMonthDay(value)}</label>;
+      },
+      type: "Date",
+      editable: true,
+      suppressKeyboardEvent: (param) => {
+        return (
+          param.editing &&
+          (param.event.key === "Enter" || param.event.key === "Tab")
+        );
+      },
       cellEditorSelector: cellEditorSelector,
     },
   ]);
@@ -105,6 +137,14 @@ const GridComponent = () => {
     gridRef.current.api.sizeColumnsToFit({});
   }, []);
 
+  const stopEditing = useCallback(() => {
+    gridRef.current.api.stopEditing();
+  });
+
+  const onCellEditingStopped = useCallback((param) => {
+    gridRef.current.api.setFocusedCell(param.rowIndex, param.column.colId);
+  });
+
   return (
     <div>
       {/* Example using Grid's API */}
@@ -120,11 +160,11 @@ const GridComponent = () => {
           animateRows={true} // Optional - set to 'true' to have rows animate when sorted
           rowSelection="multiple" // Options - allows click selection of rows
           onGridReady={onGridReady}
+          onCellEditingStopped={onCellEditingStopped}
         />
-        {/* onCellClicked={cellClickedListener} // Optional - registering for Grid Event
-          onCellKeyDown={onCellKeyDown} */}
       </div>
     </div>
   );
 };
+
 export default GridComponent;
