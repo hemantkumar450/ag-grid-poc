@@ -6,25 +6,38 @@ import React, {
   useRef,
   useState,
 } from "react";
-import DatePicker from "../UI/date-picker";
+import DatePicker from "../UI/date-picker.js";
 import Dropdown from "../UI/drop-down.js";
 import NumericCellEditor from "../UI/numeric-cell-editor.component.js";
+import DropdownWithSearch from "../UI/select-with-search.js";
 
 import "ag-grid-community/styles/ag-grid.css"; // Core grid CSS, always needed
 import "ag-grid-community/styles/ag-theme-alpine.css"; // Optional theme CSS
-
-const convertISOStringToMonthDay = (date = new Date()) => {
-  const tempDate = new Date(date).toString().split(" ");
-  const formattedDate = `${+tempDate[2]}/${tempDate[1]}/${+tempDate[3]}`;
-  return formattedDate;
-};
+import ModalBox from "../UI/modal-box.js";
 
 const GridComponent = () => {
   const gridRef = useRef(); // Optional - for accessing Grid's API
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [rowData, setRowData] = useState(); // Set rowData to Array of Objects, one Object per Row
+  const [searchOptions, setSearchOptions] = useState(
+    [
+    {
+      value: "maruti",
+      label: "Maruti",
+    },
+    {
+      value: "Honda",
+      label: "honda",
+    },
+    {
+      value: "kia",
+      label: "Kia",
+    },
+  ]);
 
-  const cellEditorSelector = (params) => {
-    const { colDef, value } = params;
+  const cellEditorSelector = useCallback((params) => {
+  const { colDef, value } = params;
+  console.log("options", searchOptions);
     if (colDef.type === "Number") {
       return {
         component: NumericCellEditor,
@@ -55,10 +68,22 @@ const GridComponent = () => {
               disabled: true,
             },
           ],
+          stopEditing,
         },
       };
     }
 
+    if (colDef.type === "SelectWithSearch") {
+      return {
+        component: DropdownWithSearch,
+        params: {
+          defaultValue: value,
+          options: searchOptions,
+          stopEditing,
+          onNoDataFound,
+        },
+      };
+    }
     if (colDef.type == "Date") {
       return {
         component: DatePicker,
@@ -69,7 +94,7 @@ const GridComponent = () => {
       };
     }
     return undefined;
-  };
+  },[searchOptions]);
 
   // Each Column Definition results in one Column.
   const [columnDefs, setColumnDefs] = useState([
@@ -77,16 +102,17 @@ const GridComponent = () => {
       field: "make",
       filter: true,
       editable: true,
+      //   width: "100%",
     },
     {
       field: "model",
       filter: true,
       editable: true,
+      cellEditorSelector: cellEditorSelector,
       type: "Select",
       suppressKeyboardEvent: (param) => {
         return param.editing && param.event.key === "Enter";
       },
-      cellEditorSelector: cellEditorSelector,
     },
     {
       field: "price",
@@ -102,7 +128,7 @@ const GridComponent = () => {
       field: "Date",
       cellRenderer: (param) => {
         const value = param.value?.toString();
-        return <label>$ {convertISOStringToMonthDay(value)}</label>;
+        return <label>$ {value}</label>;
       },
       type: "Date",
       editable: true,
@@ -113,6 +139,19 @@ const GridComponent = () => {
         );
       },
       cellEditorSelector: cellEditorSelector,
+    },
+    {
+      field: "carModel",
+      filter: true,
+      editable: true,
+      cellEditorSelector: cellEditorSelector,
+      type: "SelectWithSearch",
+      suppressKeyboardEvent: (param) => {
+        return (
+          param.editing &&
+          (param.event.key === "Enter" || param.event.key === "Tab")
+        );
+      },
     },
   ]);
 
@@ -141,13 +180,27 @@ const GridComponent = () => {
     gridRef.current.api.stopEditing();
   });
 
-  const onCellEditingStopped = useCallback((param) => {
-    gridRef.current.api.setFocusedCell(param.rowIndex, param.column.colId);
+  const onNoDataFound = useCallback(() => {
+    // gridRef.current.api.stopEditing();
+    setIsModalOpen(true);
+    console.log("No Data Found");
   });
 
+  const addOption = useCallback((value, label) => {
+    debugger;
+    setSearchOptions([...searchOptions, { value, label }]);
+    setColumnDefs([...columnDefs]);
+    setIsModalOpen(false);
+  });
+
+  const onCellEditingStopped = useCallback((param) => {
+    // gridRef.current.api.ensureColumnVisible(param.column.colId);
+    gridRef.current.api.setFocusedCell(param.rowIndex, param.column.colId);
+  });
   return (
     <div>
       {/* Example using Grid's API */}
+
       <button onClick={buttonListener}>Deselct Rows</button>
 
       {/* On div wrapping Grid a) specify theme CSS Class Class and b) sets Grid size */}
@@ -162,9 +215,17 @@ const GridComponent = () => {
           onGridReady={onGridReady}
           onCellEditingStopped={onCellEditingStopped}
         />
+        {/* onCellClicked={cellClickedListener} // Optional - registering for Grid Event
+          onCellKeyDown={onCellKeyDown} */}
       </div>
+      {isModalOpen && (
+        <ModalBox
+          isModalOpen={isModalOpen}
+          setIsModalOpen={setIsModalOpen}
+          addOption={addOption}
+        />
+      )}
     </div>
   );
 };
-
 export default GridComponent;
