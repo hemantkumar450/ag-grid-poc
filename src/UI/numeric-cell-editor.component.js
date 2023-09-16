@@ -110,19 +110,10 @@ export default forwardRef((props, ref) => {
   });
 
   const onChangeHandler = (event) => {
-    console.log(event);
     setValue(+event)
   }
 
   return (
-    // <input
-    //   ref={refInput}
-    //   className={'simple-input-editor'}
-    //   value={value}
-    //   onChange={(event) => setValue(+event.target.value)}
-    //   onKeyDown={(event) => onKeyDown(event)}
-    // />
-
     <InputNumber
       ref={refInput}
       value={value}

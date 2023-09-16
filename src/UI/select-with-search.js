@@ -1,19 +1,21 @@
-import { DatePicker, Space } from "antd";
+import { Button, Select, Space } from "antd";
 import React, {
-    forwardRef,
-    useCallback,
-    useEffect,
-    useImperativeHandle,
-    useRef,
-    useState,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
 } from "react";
 
 // backspace starts the editor on Windows
 const KEY_BACKSPACE = "Backspace";
 
 export default forwardRef((props, ref) => {
+  const options = props.options || [];
   const defaultValue = props.defaultValue;
   const stopEditing = props.stopEditing;
+  const onNoDataFound = props.onNoDataFound;
   const createInitialState = () => {
     let startValue;
 
@@ -73,18 +75,37 @@ export default forwardRef((props, ref) => {
   });
 
   const onChangeHandler = useCallback((event) => {
-      setValue(event.$d);
-      setTimeout(() => {
-          stopEditing();
-      }, 100);
+    setValue(event);
+    setTimeout(() => {
+      stopEditing();
+    }, 100);
   });
 
   return (
-    <Space direction="vertical">
-      <DatePicker
-        defaultValue={defaultValue}
+    <Space wrap>
+      <Select
         ref={refInput}
+        showSearch
+        notFoundContent={(() => {
+          return (
+            <Button
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onNoDataFound();
+              }}
+              onClick={() => onNoDataFound()}
+              type="text"
+              block
+            >
+              No Data Found
+            </Button>
+          );
+        })()}
+        defaultValue={defaultValue}
+        style={{
+          width: 120,
+        }}
         onChange={onChangeHandler}
+        options={options}
       />
     </Space>
   );
