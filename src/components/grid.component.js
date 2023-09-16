@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -19,85 +20,10 @@ const GridComponent = () => {
   const gridRef = useRef(); // Optional - for accessing Grid's API
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [rowData, setRowData] = useState(); // Set rowData to Array of Objects, one Object per Row
-  const [searchOptions, setSearchOptions] = useState(
-    [
-    {
-      value: "maruti",
-      label: "Maruti",
-    },
-    {
-      value: "Honda",
-      label: "honda",
-    },
-    {
-      value: "kia",
-      label: "Kia",
-    },
-  ]);
+  // const [searchOptions, setSearchOptions] = useState();
+  // const [columnDefs, setColumnDefs] = useState(createColdef());
 
-  const cellEditorSelector = useCallback((params) => {
-  const { colDef, value } = params;
-  console.log("options", searchOptions);
-    if (colDef.type === "Number") {
-      return {
-        component: NumericCellEditor,
-      };
-    }
-
-    if (colDef.type === "Select") {
-      return {
-        component: Dropdown,
-        params: {
-          defaultValue: value,
-          options: [
-            {
-              value: "jack",
-              label: "Jack",
-            },
-            {
-              value: "lucy",
-              label: "Lucy",
-            },
-            {
-              value: "Yiminghe",
-              label: "yiminghe",
-            },
-            {
-              value: "disabled",
-              label: "Disabled",
-              disabled: true,
-            },
-          ],
-          stopEditing,
-        },
-      };
-    }
-
-    if (colDef.type === "SelectWithSearch") {
-      return {
-        component: DropdownWithSearch,
-        params: {
-          defaultValue: value,
-          options: searchOptions,
-          stopEditing,
-          onNoDataFound,
-        },
-      };
-    }
-    if (colDef.type == "Date") {
-      return {
-        component: DatePicker,
-        params: {
-          defaultValue: null,
-          stopEditing,
-        },
-      };
-    }
-    return undefined;
-  },[searchOptions]);
-
-  // Each Column Definition results in one Column.
-  const [columnDefs, setColumnDefs] = useState([
+  const createColdef = () => [
     {
       field: "make",
       filter: true,
@@ -153,7 +79,117 @@ const GridComponent = () => {
         );
       },
     },
-  ]);
+  ];
+  const cellEditorSelector = (params) => {
+    const { colDef, value } = params;
+    console.log("options", gridState.searchOptions);
+    if (colDef.type === "Number") {
+      return {
+        component: NumericCellEditor,
+      };
+    }
+
+    if (colDef.type === "Select") {
+      return {
+        component: Dropdown,
+        params: {
+          defaultValue: value,
+          options: [
+            {
+              value: "jack",
+              label: "Jack",
+            },
+            {
+              value: "lucy",
+              label: "Lucy",
+            },
+            {
+              value: "Yiminghe",
+              label: "yiminghe",
+            },
+            {
+              value: "disabled",
+              label: "Disabled",
+              disabled: true,
+            },
+          ],
+          stopEditing,
+        },
+      };
+    }
+
+    if (colDef.type === "SelectWithSearch") {
+      return {
+        component: DropdownWithSearch,
+        params: {
+          defaultValue: value,
+          options: gridState.searchOptions,
+          stopEditing,
+          onNoDataFound,
+        },
+      };
+    }
+    if (colDef.type == "Date") {
+      return {
+        component: DatePicker,
+        params: {
+          defaultValue: null,
+          stopEditing,
+        },
+      };
+    }
+    return undefined;
+  };
+  const setFocusedOnCell = useCallback(
+    (colInfo) => {
+      const { row, colId } = colInfo;
+      gridRef.current.api.startEditingCell({ rowIndex: row, colKey: colId });
+    },
+    [gridRef]
+  );
+
+  const gridReducer = (state, action) => {
+    if (action.type === "ADD_OPTION") {
+      setTimeout(() => setFocusedOnCell(state.focusedCol), 500);
+      return {
+        ...state,
+        columnDefs: createColdef(),
+        searchOptions: [...state.searchOptions, action.data],
+        isAddOption: false,
+        focusedCol: null,
+      };
+    }
+    if (action.type === "UPDATE_FOCUSED_COL") {
+      return { ...state, focusedCol: action.data, isAddOption: true };
+    }
+    if (action.type === "REMOVED_FOCUSED_COL") {
+      return { ...state, focusedCol: null, isAddOption: false };
+    }
+    if (action.type === "UPDATE_COLDEF") {
+      return state;
+    }
+  };
+  const [gridState, dispatchGridState] = useReducer(gridReducer, {
+    columnDefs: createColdef(),
+    searchOptions: [
+      {
+        value: "maruti",
+        label: "Maruti",
+      },
+      {
+        value: "Honda",
+        label: "honda",
+      },
+      {
+        value: "kia",
+        label: "Kia",
+      },
+    ],
+    focusedCol: null,
+    isAddOption: false,
+  });
+
+  // Each Column Definition results in one Column.
 
   // DefaultColDef sets props common to all Columns
   const defaultColDef = useMemo(() => ({
@@ -181,22 +217,39 @@ const GridComponent = () => {
   });
 
   const onNoDataFound = useCallback(() => {
-    // gridRef.current.api.stopEditing();
+    const cells = gridRef.current.api.getEditingCells();
+    console.log("cells", cells);
     setIsModalOpen(true);
+    dispatchGridState({
+      type: "UPDATE_FOCUSED_COL",
+      data:
+        cells.length > 0
+          ? { row: cells[0].rowIndex, colId: cells[0].column.colId }
+          : null,
+    });
+    stopEditing();
     console.log("No Data Found");
   });
 
-  const addOption = useCallback((value, label) => {
-    debugger;
-    setSearchOptions([...searchOptions, { value, label }]);
-    setColumnDefs([...columnDefs]);
+  const addOption = (value, label) => {
     setIsModalOpen(false);
-  });
+    dispatchGridState({ type: "ADD_OPTION", data: { value, label } });
 
-  const onCellEditingStopped = useCallback((param) => {
-    // gridRef.current.api.ensureColumnVisible(param.column.colId);
-    gridRef.current.api.setFocusedCell(param.rowIndex, param.column.colId);
-  });
+    // setTimeout(() => {
+    //   console.log("column", columnDefs, searchOptions, list);
+    //   debugger;
+    //   // gridRef.current.api.setColumnDefs(columnDefs);
+    // }, 2000);
+  };
+
+  const onCellEditingStopped = useCallback(
+    (param) => {
+      // gridRef.current.api.ensureColumnVisible(param.column.colId);
+      gridRef.current.api.setFocusedCell(param.rowIndex, param.column.colId);
+    },
+    [gridRef]
+  );
+
   return (
     <div>
       {/* Example using Grid's API */}
@@ -208,7 +261,7 @@ const GridComponent = () => {
         <AgGridReact
           ref={gridRef} // Ref for accessing Grid's API
           rowData={rowData} // Row Data for Rows
-          columnDefs={columnDefs} // Column Defs for Columns
+          columnDefs={gridState.columnDefs} // Column Defs for Columns
           defaultColDef={defaultColDef} // Default Column Properties
           animateRows={true} // Optional - set to 'true' to have rows animate when sorted
           rowSelection="multiple" // Options - allows click selection of rows
